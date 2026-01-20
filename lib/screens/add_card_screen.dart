@@ -89,12 +89,15 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     
     setState(() => _isDetectingBrand = true);
     
-    // Clean the name and generate possible domains
-    final cleaned = name.toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]'), '')
-        .trim();
+    // Clean the name - remove special chars but keep for word splitting
+    final words = name.toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), '')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
     
-    if (cleaned.isEmpty) {
+    if (words.isEmpty) {
       setState(() {
         _isDetectingBrand = false;
         _detectedBrandDomain = null;
@@ -102,14 +105,35 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
       return;
     }
 
-    // Try different domain variations
-    final domainsToTry = [
+    // Generate domain variations to try
+    final cleaned = words.join(''); // "oldwildwest"
+    final firstWord = words.first; // "old"
+    final lastWord = words.last; // "west"
+    final initials = words.map((w) => w[0]).join(''); // "oww"
+    
+    // Build list of domains to try
+    final domainsToTry = <String>{
+      // Full name without spaces
       '$cleaned.com',
       '$cleaned.it',
       '$cleaned.eu',
-      // Try with common variations
-      if (cleaned.length > 4) '${cleaned.substring(0, cleaned.length > 10 ? 10 : cleaned.length)}.com',
-    ];
+      '$cleaned.net',
+      // First word only (for brands like "Esselunga")
+      if (words.length == 1 || firstWord.length >= 4) '$firstWord.com',
+      if (words.length == 1 || firstWord.length >= 4) '$firstWord.it',
+      // Last word (sometimes brand is the last word)
+      if (words.length > 1 && lastWord.length >= 4) '$lastWord.com',
+      if (words.length > 1 && lastWord.length >= 4) '$lastWord.it',
+      // Initials (e.g., "oww" for "old wild west")
+      if (words.length > 1 && initials.length >= 2) '$initials.it',
+      if (words.length > 1 && initials.length >= 2) '$initials.com',
+      // First two words combined
+      if (words.length >= 2) '${words[0]}${words[1]}.com',
+      if (words.length >= 2) '${words[0]}${words[1]}.it',
+      // With hyphens
+      if (words.length > 1) '${words.join("-")}.com',
+      if (words.length > 1) '${words.join("-")}.it',
+    };
 
     for (final domain in domainsToTry) {
       final exists = await _checkLogoExists(domain);
@@ -739,6 +763,32 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // If name has content but no logo found, show hint
+    if (_nameController.text.trim().length >= 3 && !_brandSuggestionDismissed) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(
+              Icons.info_outline,
+              color: Colors.white.withValues(alpha: 0.3),
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Nessun logo trovato per questo nome',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 12,
+                ),
               ),
             ),
           ],
