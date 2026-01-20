@@ -23,15 +23,16 @@ class CardModelAdapter extends TypeAdapter<CardModel> {
       codeType: fields[3] as String,
       category: fields[4] as String,
       colorValue: fields[5] as int,
-      createdAt: fields[6] as DateTime,
+      createdAt: fields[6] as DateTime?,
       note: fields[7] as String?,
+      brandDomain: fields[8] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CardModel obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +48,9 @@ class CardModelAdapter extends TypeAdapter<CardModel> {
       ..writeByte(6)
       ..write(obj.createdAt)
       ..writeByte(7)
-      ..write(obj.note);
+      ..write(obj.note)
+      ..writeByte(8)
+      ..write(obj.brandDomain);
   }
 
   @override

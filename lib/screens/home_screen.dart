@@ -175,6 +175,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,67 +294,101 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   }
 
   Widget _buildEmptyState(bool isSearching) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isSearching ? Icons.search_off : Icons.credit_card_off,
-            size: 64,
-            color: Colors.white.withValues(alpha: 0.3),
+    return SingleChildScrollView(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isSearching ? Icons.search_off : Icons.credit_card_off,
+                size: 64,
+                color: Colors.white.withValues(alpha: 0.3),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                isSearching ? 'Nessun risultato' : 'Nessuna tessera',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isSearching
+                    ? 'Prova a cercare qualcos\'altro'
+                    : 'Aggiungi la tua prima tessera',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            isSearching ? 'Nessun risultato' : 'Nessuna tessera',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            isSearching
-                ? 'Prova a cercare qualcos\'altro'
-                : 'Aggiungi la tua prima tessera',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.3),
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 100), // Space for FAB
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildCardsList(List<CardModel> cards) {
-    return ListView.builder(
+    // Calculate total height needed for the stack
+    double totalHeight = 0;
+    for (int i = 0; i < cards.length; i++) {
+      final isExpanded = _expandedIndex == i;
+      if (i == 0) {
+        totalHeight += isExpanded ? 200 : 80;
+      } else {
+        // Each subsequent card peeks out by 40px when collapsed, 8px spacing when expanded
+        totalHeight += isExpanded ? 208 : 40;
+      }
+    }
+    totalHeight += 100; // Space for FAB
+
+    return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 100),
-      itemCount: cards.length,
-      itemBuilder: (context, index) {
-        final card = cards[index];
-        final isExpanded = _expandedIndex == index;
-        
-        return Padding(
-          padding: EdgeInsets.only(
-            top: index == 0 ? 0 : (isExpanded ? 8 : -40),
-          ),
-          child: WalletCard(
-            card: card,
-            isExpanded: isExpanded,
-            peekHeight: 80,
-            onTap: () {
-              if (isExpanded) {
-                _openCardDetail(card);
+      child: SizedBox(
+        height: totalHeight,
+        child: Stack(
+          children: List.generate(cards.length, (index) {
+            final card = cards[index];
+            final isExpanded = _expandedIndex == index;
+            
+            // Calculate top position for this card
+            double topPosition = 0;
+            for (int i = 0; i < index; i++) {
+              final prevExpanded = _expandedIndex == i;
+              if (prevExpanded) {
+                topPosition += 208; // Full height + spacing
               } else {
-                _toggleCardExpansion(index);
+                topPosition += 40; // Peek amount
               }
-            },
-            onLongPress: () => _deleteCard(card),
-          ),
-        );
-      },
+            }
+
+            return AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              top: topPosition,
+              left: 0,
+              right: 0,
+              child: WalletCard(
+                card: card,
+                isExpanded: isExpanded,
+                peekHeight: 80,
+                onTap: () {
+                  if (isExpanded) {
+                    _openCardDetail(card);
+                  } else {
+                    _toggleCardExpansion(index);
+                  }
+                },
+                onLongPress: () => _deleteCard(card),
+              ),
+            );
+          }),
+        ),
+      ),
     );
   }
 }
