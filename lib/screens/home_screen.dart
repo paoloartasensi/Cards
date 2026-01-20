@@ -6,6 +6,7 @@ import '../widgets/wallet_card.dart';
 import '../widgets/swipeable_card_stack.dart';
 import 'card_detail_screen.dart';
 import 'add_card_screen.dart';
+import 'info_screen.dart';
 
 /// Home screen with wallet-style card stack
 class HomeScreen extends ConsumerStatefulWidget {
@@ -163,6 +164,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       ),
                     );
                   }
+                },
+              ),
+              Divider(color: Colors.white.withValues(alpha: 0.1)),
+              ListTile(
+                leading: const Icon(Icons.info_outline, color: Colors.white),
+                title: const Text('Informazioni', style: TextStyle(color: Colors.white)),
+                subtitle: Text(
+                  'Privacy, termini e crediti',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const InfoScreen()),
+                  );
                 },
               ),
             ],
