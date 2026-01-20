@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/card_model.dart';
 import '../providers/cards_provider.dart';
 import '../widgets/wallet_card.dart';
+import '../widgets/swipeable_card_stack.dart';
 import 'card_detail_screen.dart';
 import 'add_card_screen.dart';
 
@@ -17,6 +18,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStateMixin {
   String? _selectedCategory;
   int? _expandedIndex;
+  bool _useSwipeMode = true; // Toggle between swipe and list mode
 
   @override
   void initState() {
@@ -24,6 +26,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     // Load cards on startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(cardsProvider.notifier).loadCards();
+    });
+  }
+
+  void _toggleViewMode() {
+    setState(() {
+      _useSwipeMode = !_useSwipeMode;
+      _expandedIndex = null;
     });
   }
 
@@ -208,9 +217,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       ),
                     ],
                   ),
-                  IconButton(
-                    onPressed: _showSettings,
-                    icon: const Icon(Icons.more_horiz, color: Colors.white, size: 28),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: _toggleViewMode,
+                        icon: Icon(
+                          _useSwipeMode ? Icons.view_list : Icons.style,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        tooltip: _useSwipeMode ? 'Vista lista' : 'Vista swipe',
+                      ),
+                      IconButton(
+                        onPressed: _showSettings,
+                        icon: const Icon(Icons.more_horiz, color: Colors.white, size: 28),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -241,39 +263,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             ),
             const SizedBox(height: 16),
 
-            // Category filter
-            SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: [
-                  _CategoryChip(
-                    label: 'Tutte',
-                    isSelected: _selectedCategory == null,
-                    onTap: () => setState(() => _selectedCategory = null),
-                  ),
-                  const SizedBox(width: 8),
-                  ...CardCategories.all.map((category) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _CategoryChip(
-                        label: category,
-                        isSelected: _selectedCategory == category,
-                        onTap: () => setState(() => _selectedCategory = category),
-                      ),
-                    );
-                  }),
-                ],
+            // Category filter (only show in list mode)
+            if (!_useSwipeMode)
+              SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  children: [
+                    _CategoryChip(
+                      label: 'Tutte',
+                      isSelected: _selectedCategory == null,
+                      onTap: () => setState(() => _selectedCategory = null),
+                    ),
+                    const SizedBox(width: 8),
+                    ...CardCategories.all.map((category) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _CategoryChip(
+                          label: category,
+                          isSelected: _selectedCategory == category,
+                          onTap: () => setState(() => _selectedCategory = category),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
+            if (!_useSwipeMode) const SizedBox(height: 20),
 
-            // Cards list
+            // Cards view - swipe or list mode
             Expanded(
               child: filteredCards.isEmpty
                   ? _buildEmptyState(searchQuery.isNotEmpty)
-                  : _buildCardsList(filteredCards),
+                  : _useSwipeMode 
+                      ? _buildSwipeView(filteredCards)
+                      : _buildCardsList(filteredCards),
             ),
           ],
         ),
@@ -329,6 +354,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSwipeView(List<CardModel> cards) {
+    return Column(
+      children: [
+        // Card count indicator
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.credit_card,
+                color: Colors.white.withValues(alpha: 0.5),
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${cards.length} tessere',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Swipeable card stack
+        Expanded(
+          child: Center(
+            child: SwipeableCardStack(
+              cards: cards,
+              onCardTap: (card) => _openCardDetail(card),
+              onCardLongPress: (card) => _deleteCard(card),
+            ),
+          ),
+        ),
+        // Instructions
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text(
+            'Scorri a sinistra o destra per sfogliare le tessere',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.4),
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
