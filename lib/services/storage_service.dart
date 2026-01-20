@@ -59,25 +59,39 @@ class StorageService {
   }
 
   /// Import cards from JSON file
-  Future<int> importCards() async {
+  /// Returns a record with (imported count, skipped count)
+  Future<({int imported, int skipped})> importCards() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['json'],
     );
 
     if (result == null || result.files.isEmpty) {
-      return 0;
+      return (imported: 0, skipped: 0);
     }
 
     final file = File(result.files.single.path!);
     final jsonString = await file.readAsString();
     final jsonList = jsonDecode(jsonString) as List<dynamic>;
 
+    // Get existing codes to check for duplicates
+    final existingCodes = _box.values.map((c) => c.code).toSet();
+
     int importedCount = 0;
+    int skippedCount = 0;
+    
     for (final json in jsonList) {
       try {
         final card = CardModel.fromJson(json as Map<String, dynamic>);
+        
+        // Skip if card with same code already exists
+        if (existingCodes.contains(card.code)) {
+          skippedCount++;
+          continue;
+        }
+        
         await _box.put(card.id, card);
+        existingCodes.add(card.code); // Add to set to avoid duplicates within import
         importedCount++;
       } catch (e) {
         // Skip invalid cards
@@ -85,7 +99,7 @@ class StorageService {
       }
     }
 
-    return importedCount;
+    return (imported: importedCount, skipped: skippedCount);
   }
 
   /// Watch for changes in the box

@@ -155,12 +155,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 onTap: () async {
                   final messenger = ScaffoldMessenger.of(context);
                   Navigator.pop(context);
-                  final count = await ref.read(cardsProvider.notifier).importCards();
+                  final result = await ref.read(cardsProvider.notifier).importCards();
                   if (mounted) {
+                    String message;
+                    if (result.imported == 0 && result.skipped == 0) {
+                      message = 'Nessuna tessera importata';
+                    } else if (result.skipped == 0) {
+                      message = '${result.imported} tessere importate';
+                    } else {
+                      message = '${result.imported} importate, ${result.skipped} già presenti';
+                    }
                     messenger.showSnackBar(
                       SnackBar(
-                        content: Text('$count tessere importate'),
-                        backgroundColor: Colors.green,
+                        content: Text(message),
+                        backgroundColor: result.imported > 0 ? Colors.green : Colors.orange,
                       ),
                     );
                   }

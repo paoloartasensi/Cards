@@ -106,11 +106,12 @@ class CardsNotifier extends StateNotifier<List<CardModel>> {
   }
 
   /// Import cards from JSON
-  Future<int> importCards() async {
-    final count = await _storageService.importCards();
-    if (count > 0) {
+  /// Returns a record with (imported count, skipped count)
+  Future<({int imported, int skipped})> importCards() async {
+    final result = await _storageService.importCards();
+    if (result.imported > 0) {
       await loadCards();
     }
-    return count;
+    return result;
   }
 }
