@@ -263,34 +263,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             ),
             const SizedBox(height: 16),
 
-            // Category filter (only show in list mode)
-            if (!_useSwipeMode)
-              SizedBox(
-                height: 40,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  children: [
-                    _CategoryChip(
-                      label: 'Tutte',
-                      isSelected: _selectedCategory == null,
-                      onTap: () => setState(() => _selectedCategory = null),
-                    ),
-                    const SizedBox(width: 8),
-                    ...CardCategories.all.map((category) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _CategoryChip(
-                          label: category,
-                          isSelected: _selectedCategory == category,
-                          onTap: () => setState(() => _selectedCategory = category),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
+            // Category filter
+            SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  _CategoryChip(
+                    label: 'Tutte',
+                    isSelected: _selectedCategory == null,
+                    onTap: () => setState(() => _selectedCategory = null),
+                  ),
+                  const SizedBox(width: 8),
+                  ...CardCategories.all.map((category) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _CategoryChip(
+                        label: category,
+                        isSelected: _selectedCategory == category,
+                        onTap: () => setState(() => _selectedCategory = category),
+                      ),
+                    );
+                  }),
+                ],
               ),
-            if (!_useSwipeMode) const SizedBox(height: 20),
+            ),
+            const SizedBox(height: 20),
 
             // Cards view - swipe or list mode
             Expanded(
@@ -390,18 +389,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
               cards: cards,
               onCardTap: (card) => _openCardDetail(card),
               onCardLongPress: (card) => _deleteCard(card),
-            ),
-          ),
-        ),
-        // Instructions
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text(
-            'Scorri a sinistra o destra per sfogliare le tessere',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.4),
-              fontSize: 12,
             ),
           ),
         ),

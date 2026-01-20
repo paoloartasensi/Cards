@@ -74,13 +74,20 @@ class BarcodeDisplay extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: height,
-            width: _is2D ? height : width,
-            child: bw.BarcodeWidget(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableHeight = constraints.maxHeight - 32;
+          final barcodeHeight = _is2D 
+              ? (availableHeight - 20).clamp(50.0, height)
+              : availableHeight.clamp(50.0, height);
+          
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: barcodeHeight,
+                width: _is2D ? barcodeHeight : width,
+                child: bw.BarcodeWidget(
               data: card.code,
               barcode: _getBarcodeType(),
               color: barcodeColor,
@@ -106,18 +113,22 @@ class BarcodeDisplay extends StatelessWidget {
             ),
           ),
           if (_is2D) ...[
-            const SizedBox(height: 12),
-            SelectableText(
+            const SizedBox(height: 8),
+            Text(
               card.code,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontFamily: 'monospace',
                 color: barcodeColor.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
-        ],
+            ],
+          );
+        },
       ),
     );
   }

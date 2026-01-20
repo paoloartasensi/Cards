@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/card_model.dart';
 
 /// A swipeable card stack widget with curved swipe effect
@@ -26,6 +27,7 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
   // Animation controllers
   late AnimationController _swipeController;
   late AnimationController _returnController;
+  late AnimationController _shakeController;
   
   // Current drag state
   double _dragX = 0;
@@ -52,12 +54,27 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    
+    // Shake animation on appear
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _playShakeAnimation();
+    });
+  }
+  
+  void _playShakeAnimation() {
+    HapticFeedback.lightImpact();
+    _shakeController.forward(from: 0);
   }
 
   @override
   void dispose() {
     _swipeController.dispose();
     _returnController.dispose();
+    _shakeController.dispose();
     super.dispose();
   }
 
@@ -191,21 +208,31 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
             top: yOffset,
             left: 0,
             right: 0,
-            child: GestureDetector(
-              onPanStart: isTopCard ? _onPanStart : null,
-              onPanUpdate: isTopCard ? _onPanUpdate : null,
-              onPanEnd: isTopCard ? _onPanEnd : null,
-              child: Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()
-                  ..translate(xOffset)
-                  ..rotateZ(rotation)
-                  ..scale(currentScale),
-                child: Opacity(
-                  opacity: isTopCard ? 1.0 : (0.6 + (stackIndex * 0.15)).clamp(0.0, 1.0),
-                  child: _buildCard(card, isTopCard),
-                ),
-              ),
+            child: AnimatedBuilder(
+              animation: _shakeController,
+              builder: (context, child) {
+                double animatedShakeOffset = 0;
+                if (isTopCard && !_isDragging && _dragX == 0) {
+                  final shakeProgress = _shakeController.value;
+                  animatedShakeOffset = math.sin(shakeProgress * math.pi * 4) * (1 - shakeProgress) * 12;
+                }
+                
+                return GestureDetector(
+                  onPanStart: isTopCard ? _onPanStart : null,
+                  onPanUpdate: isTopCard ? _onPanUpdate : null,
+                  onPanEnd: isTopCard ? _onPanEnd : null,
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.diagonal3Values(currentScale, currentScale, 1.0)
+                      ..setEntry(0, 3, (xOffset + animatedShakeOffset) * currentScale)
+                      ..rotateZ(rotation),
+                    child: Opacity(
+                      opacity: isTopCard ? 1.0 : (0.6 + (stackIndex * 0.15)).clamp(0.0, 1.0),
+                      child: _buildCard(card, isTopCard),
+                    ),
+                  ),
+                );
+              },
             ),
           );
         }),
@@ -271,7 +298,7 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
                       width: 36,
                       height: 36,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
                     ),
                   ),
                 ),
@@ -333,25 +360,6 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
                         fontFamily: 'monospace',
                         letterSpacing: 1.5,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.swipe,
-                          color: Colors.white.withValues(alpha: 0.4),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Scorri per la prossima',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
