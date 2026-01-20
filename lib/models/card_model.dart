@@ -30,8 +30,7 @@ class CardModel extends HiveObject {
   String? note;
 
   @HiveField(8)
-  @Deprecated('Brand logo feature removed')
-  String? brandDomain; // Kept for backward compatibility
+  String? brandDomain; // Kept for backward compatibility with existing data
 
   CardModel({
     required this.id,
