@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/card_model.dart';
 
 /// A single card widget in the wallet style
@@ -64,33 +63,6 @@ class WalletCard extends StatelessWidget {
                 ),
               ),
             ),
-            // Brand logo in background (if available)
-            if (card.brandDomain != null)
-              Positioned(
-                right: 16,
-                top: 16,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: CachedNetworkImage(
-                      imageUrl: card.logoUrl!,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) => const SizedBox(
-                        width: 32,
-                        height: 32,
-                      ),
-                      errorWidget: (context, url, error) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
-              ),
             // Card content
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -111,23 +83,21 @@ class WalletCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Show category only if no brand logo
-                  if (card.brandDomain == null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        card.category,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      card.category,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),

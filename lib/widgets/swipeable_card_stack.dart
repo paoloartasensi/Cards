@@ -282,26 +282,6 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
                   ),
                 ),
               ),
-              // Brand logo if available
-              if (card.brandDomain != null)
-                Positioned(
-                  right: 20,
-                  top: 20,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Image.network(
-                      card.logoUrl!,
-                      width: 36,
-                      height: 36,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
               // Card content
               Padding(
                 padding: const EdgeInsets.all(24),
@@ -322,25 +302,24 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (card.brandDomain == null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              card.category,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            card.category,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
+                        ),
                       ],
                     ),
                     const Spacer(),

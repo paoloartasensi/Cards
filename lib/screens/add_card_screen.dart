@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:http/http.dart' as http;
-import 'package:cached_network_image/cached_network_image.dart';
 import '../models/card_model.dart';
 import '../providers/cards_provider.dart';
 import '../services/scanner_service.dart';
@@ -31,12 +29,6 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   late int _selectedColor;
   bool _isScanning = false;
   MobileScannerController? _scannerController;
-  
-  // Brand detection
-  String? _detectedBrandDomain;
-  String? _selectedBrandDomain;
-  bool _isDetectingBrand = false;
-  bool _brandSuggestionDismissed = false;
 
   @override
   void initState() {
@@ -49,144 +41,20 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
       _selectedCategory = card.category;
       _selectedCodeType = card.codeType;
       _selectedColor = card.colorValue;
-      _selectedBrandDomain = card.brandDomain;
     } else {
       _selectedCategory = CardCategories.altro;
       _selectedCodeType = BarcodeTypes.code128;
       _selectedColor = 0xFF2196F3;
     }
-    
-    _nameController.addListener(_onNameChanged);
   }
 
   @override
   void dispose() {
-    _nameController.removeListener(_onNameChanged);
     _nameController.dispose();
     _codeController.dispose();
     _noteController.dispose();
     _scannerController?.dispose();
     super.dispose();
-  }
-
-  /// Called when name changes - try to detect brand
-  void _onNameChanged() {
-    if (_brandSuggestionDismissed) return;
-    
-    final name = _nameController.text.trim();
-    if (name.length >= 3) {
-      _detectBrand(name);
-    } else {
-      setState(() {
-        _detectedBrandDomain = null;
-      });
-    }
-  }
-
-  /// Try to detect a brand domain from the name
-  Future<void> _detectBrand(String name) async {
-    if (_isDetectingBrand) return;
-    
-    setState(() => _isDetectingBrand = true);
-    
-    // Clean the name - remove special chars but keep for word splitting
-    final words = name.toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9\s]'), '')
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .toList();
-    
-    if (words.isEmpty) {
-      setState(() {
-        _isDetectingBrand = false;
-        _detectedBrandDomain = null;
-      });
-      return;
-    }
-
-    // Generate domain variations to try
-    final cleaned = words.join(''); // "oldwildwest"
-    final firstWord = words.first; // "old"
-    final lastWord = words.last; // "west"
-    final initials = words.map((w) => w[0]).join(''); // "oww"
-    
-    // Build list of domains to try
-    final domainsToTry = <String>{
-      // Full name without spaces
-      '$cleaned.com',
-      '$cleaned.it',
-      '$cleaned.eu',
-      '$cleaned.net',
-      // First word only (for brands like "Esselunga")
-      if (words.length == 1 || firstWord.length >= 4) '$firstWord.com',
-      if (words.length == 1 || firstWord.length >= 4) '$firstWord.it',
-      // Last word (sometimes brand is the last word)
-      if (words.length > 1 && lastWord.length >= 4) '$lastWord.com',
-      if (words.length > 1 && lastWord.length >= 4) '$lastWord.it',
-      // Initials (e.g., "oww" for "old wild west")
-      if (words.length > 1 && initials.length >= 2) '$initials.it',
-      if (words.length > 1 && initials.length >= 2) '$initials.com',
-      // First two words combined
-      if (words.length >= 2) '${words[0]}${words[1]}.com',
-      if (words.length >= 2) '${words[0]}${words[1]}.it',
-      // With hyphens
-      if (words.length > 1) '${words.join("-")}.com',
-      if (words.length > 1) '${words.join("-")}.it',
-    };
-
-    for (final domain in domainsToTry) {
-      final exists = await _checkLogoExists(domain);
-      if (exists && mounted) {
-        setState(() {
-          _detectedBrandDomain = domain;
-          _isDetectingBrand = false;
-        });
-        return;
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _detectedBrandDomain = null;
-        _isDetectingBrand = false;
-      });
-    }
-  }
-
-  /// Check if a logo exists for the given domain using Clearbit
-  Future<bool> _checkLogoExists(String domain) async {
-    try {
-      final response = await http.head(
-        Uri.parse('https://logo.clearbit.com/$domain'),
-      ).timeout(const Duration(seconds: 2));
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Accept the brand suggestion
-  void _acceptBrandSuggestion() {
-    setState(() {
-      _selectedBrandDomain = _detectedBrandDomain;
-    });
-  }
-
-  /// Dismiss the brand suggestion
-  void _dismissBrandSuggestion() {
-    setState(() {
-      _brandSuggestionDismissed = true;
-      _detectedBrandDomain = null;
-    });
-  }
-
-  /// Remove the selected brand
-  void _removeBrand() {
-    setState(() {
-      _selectedBrandDomain = null;
-      _brandSuggestionDismissed = false;
-    });
   }
 
   final List<int> _availableColors = [
@@ -275,10 +143,6 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     if (!_formKey.currentState!.validate()) return;
     
     try {
-      // Use selected brand domain, or detected if user hasn't dismissed it
-      final brandDomain = _selectedBrandDomain ?? 
-          (!_brandSuggestionDismissed ? _detectedBrandDomain : null);
-      
       if (widget.isEditing) {
         // Update existing card
         final updatedCard = widget.cardToEdit!.copyWith(
@@ -288,8 +152,6 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
           category: _selectedCategory,
           colorValue: _selectedColor,
           note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-          brandDomain: brandDomain,
-          clearBrandDomain: brandDomain == null,
         );
         await ref.read(cardsProvider.notifier).updateCard(updatedCard);
       } else {
@@ -301,7 +163,6 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
           category: _selectedCategory,
           colorValue: _selectedColor,
           note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-          brandDomain: brandDomain,
         );
       }
 
@@ -430,10 +291,6 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 12),
-            
-            // Brand logo suggestion/display
-            _buildBrandSection(),
             const SizedBox(height: 16),
 
             // Code field
@@ -603,201 +460,6 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
         fontWeight: FontWeight.w500,
       ),
     );
-  }
-
-  Widget _buildBrandSection() {
-    // If user already selected a brand, show it
-    if (_selectedBrandDomain != null) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: CachedNetworkImage(
-                imageUrl: 'https://logo.clearbit.com/$_selectedBrandDomain',
-                width: 40,
-                height: 40,
-                fit: BoxFit.contain,
-                placeholder: (context, url) => Container(
-                  width: 40,
-                  height: 40,
-                  color: Colors.white.withValues(alpha: 0.1),
-                  child: const Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  width: 40,
-                  height: 40,
-                  color: Colors.white.withValues(alpha: 0.1),
-                  child: const Icon(Icons.image_not_supported, color: Colors.white38),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Logo brand attivo',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    _selectedBrandDomain!,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: _removeBrand,
-              icon: const Icon(Icons.close, color: Colors.white54, size: 20),
-              tooltip: 'Rimuovi logo',
-            ),
-          ],
-        ),
-      );
-    }
-
-    // If a brand was detected but not yet accepted, show suggestion
-    if (_detectedBrandDomain != null && !_brandSuggestionDismissed) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.blue.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: CachedNetworkImage(
-                imageUrl: 'https://logo.clearbit.com/$_detectedBrandDomain',
-                width: 40,
-                height: 40,
-                fit: BoxFit.contain,
-                placeholder: (context, url) => Container(
-                  width: 40,
-                  height: 40,
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  width: 40,
-                  height: 40,
-                  color: Colors.white.withValues(alpha: 0.1),
-                  child: const Icon(Icons.image_not_supported, color: Colors.white38),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Logo trovato!',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    'Vuoi usare questo logo?',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: _dismissBrandSuggestion,
-              icon: const Icon(Icons.close, color: Colors.white54, size: 20),
-              tooltip: 'No, grazie',
-            ),
-            IconButton(
-              onPressed: _acceptBrandSuggestion,
-              icon: const Icon(Icons.check, color: Colors.green, size: 20),
-              tooltip: 'Usa questo logo',
-            ),
-          ],
-        ),
-      );
-    }
-
-    // If detecting brand, show loading
-    if (_isDetectingBrand) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Cerco logo brand...',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // If name has content but no logo found, show hint
-    if (_nameController.text.trim().length >= 3 && !_brandSuggestionDismissed) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Icon(
-              Icons.info_outline,
-              color: Colors.white.withValues(alpha: 0.3),
-              size: 16,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Nessun logo trovato per questo nome',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Nothing to show
-    return const SizedBox.shrink();
   }
 
   Widget _buildTextField({

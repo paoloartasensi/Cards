@@ -30,7 +30,8 @@ class CardModel extends HiveObject {
   String? note;
 
   @HiveField(8)
-  String? brandDomain; // Optional brand domain for logo (e.g., "esselunga.it")
+  @Deprecated('Brand logo feature removed')
+  String? brandDomain; // Kept for backward compatibility
 
   CardModel({
     required this.id,
@@ -47,11 +48,6 @@ class CardModel extends HiveObject {
   /// Get Color from colorValue
   int get color => colorValue;
 
-  /// Get the logo URL if brandDomain is set
-  String? get logoUrl => brandDomain != null 
-      ? 'https://logo.clearbit.com/$brandDomain' 
-      : null;
-
   /// Create a copy with modified fields
   CardModel copyWith({
     String? id,
@@ -62,8 +58,6 @@ class CardModel extends HiveObject {
     int? colorValue,
     DateTime? createdAt,
     String? note,
-    String? brandDomain,
-    bool clearBrandDomain = false,
   }) {
     return CardModel(
       id: id ?? this.id,
@@ -74,7 +68,6 @@ class CardModel extends HiveObject {
       colorValue: colorValue ?? this.colorValue,
       createdAt: createdAt ?? this.createdAt,
       note: note ?? this.note,
-      brandDomain: clearBrandDomain ? null : (brandDomain ?? this.brandDomain),
     );
   }
 
@@ -89,7 +82,6 @@ class CardModel extends HiveObject {
       'colorValue': colorValue,
       'createdAt': createdAt.toIso8601String(),
       'note': note,
-      'brandDomain': brandDomain,
     };
   }
 
@@ -104,7 +96,6 @@ class CardModel extends HiveObject {
       colorValue: json['colorValue'] as int? ?? 0xFF2196F3,
       createdAt: DateTime.parse(json['createdAt'] as String),
       note: json['note'] as String?,
-      brandDomain: json['brandDomain'] as String?,
     );
   }
 }

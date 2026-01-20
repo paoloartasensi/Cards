@@ -31,7 +31,7 @@ class InfoScreen extends StatelessWidget {
             // App info card
             _buildSection(
               icon: Icons.wallet,
-              title: 'Card Wallet',
+              title: 'Cards',
               children: [
                 _buildInfoTile('Versione', '1.0.0'),
                 _buildInfoTile('Sviluppatore', 'Card Wallet Team'),
@@ -47,12 +47,11 @@ class InfoScreen extends StatelessWidget {
               children: [
                 _buildExpandableTile(
                   'Informativa sulla Privacy',
-                  '''Card Wallet rispetta la tua privacy. Tutti i dati delle tessere sono salvati localmente sul tuo dispositivo e non vengono mai trasmessi a server esterni.
+                  '''Cards rispetta la tua privacy. Tutti i dati delle tessere sono salvati localmente sul tuo dispositivo e non vengono mai trasmessi a server esterni.
 
 • I dati delle tessere (nome, codice, categoria) sono memorizzati solo sul dispositivo
 • Non raccogliamo dati personali
 • Non utilizziamo servizi di tracciamento o analytics
-• Le immagini dei loghi vengono caricate da Clearbit solo per migliorare l'esperienza visiva
 • La funzione di esportazione salva i dati in formato JSON sul tuo dispositivo''',
                 ),
               ],
@@ -66,17 +65,16 @@ class InfoScreen extends StatelessWidget {
               children: [
                 _buildExpandableTile(
                   'Condizioni d\'uso',
-                  '''Utilizzando Card Wallet, accetti i seguenti termini:
+                  '''Utilizzando Cards, accetti i seguenti termini:
 
 1. L'app è fornita "così com'è" senza garanzie di alcun tipo
 2. L'utente è responsabile del backup dei propri dati
 3. Non siamo responsabili per perdita di dati o malfunzionamenti
-4. L'app è destinata esclusivamente all'uso personale
-5. I marchi e i loghi visualizzati appartengono ai rispettivi proprietari''',
+4. L'app è destinata esclusivamente all'uso personale''',
                 ),
                 _buildExpandableTile(
                   'Esclusione di Responsabilità',
-                  '''Card Wallet è un'applicazione per la gestione personale delle tessere fedeltà. Non siamo affiliati con nessuno dei negozi o brand le cui tessere possono essere salvate nell'app.
+                  '''Cards è un'applicazione per la gestione personale delle tessere fedeltà. Non siamo affiliati con nessuno dei negozi o brand le cui tessere possono essere salvate nell'app.
 
 L'app non garantisce la validità o l'accettazione dei codici a barre generati presso i punti vendita.''',
                 ),
@@ -118,7 +116,6 @@ Per ripristinare le tessere, usa la funzione Importa tessere e seleziona il file
               children: [
                 _buildInfoTile('Framework', 'Flutter'),
                 _buildInfoTile('Database', 'Hive'),
-                _buildInfoTile('Loghi Brand', 'Clearbit Logo API'),
                 _buildInfoTile('Icone', 'Material Icons'),
               ],
             ),
@@ -138,7 +135,7 @@ Per ripristinare le tessere, usa la funzione Importa tessere e seleziona il file
             // Footer
             Center(
               child: Text(
-                '© ${DateTime.now().year} Card Wallet. Tutti i diritti riservati.',
+                '© ${DateTime.now().year} Cards. Tutti i diritti riservati.',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.3),
                   fontSize: 12,
