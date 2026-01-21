@@ -1,5 +1,6 @@
 /// Copia questo file come api_config.dart e inserisci le tue API keys
 /// NON committare api_config.dart!
+library;
 
 class ApiConfig {
   // AviationStack - https://aviationstack.com/ (piano gratuito: 100 richieste/mese)
