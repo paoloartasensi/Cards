@@ -325,6 +325,10 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
                     ),
                     const SizedBox(height: 16),
                     
+                    // Passenger name
+                    if (card.passengerName != null)
+                      _buildFlightDetailRow(Icons.person, 'Passeggero', card.passengerName!),
+                    
                     // Flight route
                     if (card.flightRoute != null)
                       _buildFlightDetailRow(Icons.flight_takeoff, 'Tratta', card.flightRoute!),
@@ -344,6 +348,61 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
                     // Departure time
                     if (card.departureTime != null)
                       _buildFlightDetailRow(Icons.access_time, 'Orario', card.departureTime!),
+                    
+                    // Seat and class in a row
+                    if (card.seatNumber != null || card.travelClass != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            if (card.seatNumber != null) ...[
+                              Icon(Icons.airline_seat_recline_normal, 
+                                  color: Colors.white.withValues(alpha: 0.5), size: 20),
+                              const SizedBox(width: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Posto ${card.seatNumber}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            if (card.seatNumber != null && card.travelClass != null)
+                              const SizedBox(width: 16),
+                            if (card.travelClass != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: _getClassColor(card.travelClass!).withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: _getClassColor(card.travelClass!).withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                child: Text(
+                                  card.travelClass!,
+                                  style: TextStyle(
+                                    color: _getClassColor(card.travelClass!),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    
+                    // PNR / Booking reference
+                    if (card.pnr != null)
+                      _buildFlightDetailRow(Icons.bookmark, 'PNR', card.pnr!),
                   ],
                 ),
               ),
@@ -359,11 +418,27 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
     );
   }
 
+  Color _getClassColor(String travelClass) {
+    switch (travelClass.toLowerCase()) {
+      case 'first':
+      case 'first premium':
+        return Colors.amber;
+      case 'business':
+        return Colors.purple.shade300;
+      case 'premium economy':
+        return Colors.teal;
+      default:
+        return Colors.blue.shade300;
+    }
+  }
+
   bool _hasFlightInfo(CardModel card) {
     return card.flightRoute != null || 
            card.flightNumber != null || 
            card.flightDate != null || 
-           card.departureTime != null;
+           card.departureTime != null ||
+           card.seatNumber != null ||
+           card.pnr != null;
   }
 
   Widget _buildFlightDetailRow(IconData icon, String label, String value) {
