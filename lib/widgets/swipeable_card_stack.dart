@@ -127,6 +127,9 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
     });
     
     _swipeController.forward().then((_) {
+      // Haptic feedback when swipe completes
+      HapticFeedback.mediumImpact();
+      
       setState(() {
         _dragX = 0;
         if (widget.cards.isNotEmpty) {
