@@ -92,7 +92,7 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
             // Card preview
             Container(
               margin: const EdgeInsets.all(24),
-              height: 180,
+              constraints: const BoxConstraints(minHeight: 160),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -128,23 +128,25 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
                   ),
                   // Content
                   Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: Text(
                                 card.name,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 28,
+                                  fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -165,7 +167,7 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
                             ),
                           ],
                         ),
-                        const Spacer(),
+                        const SizedBox(height: 16),
                         Text(
                           BarcodeTypes.getDisplayName(card.codeType),
                           style: TextStyle(
