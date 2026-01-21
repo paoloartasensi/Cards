@@ -5,7 +5,7 @@ library;
 class ApiConfig {
   /// OpenWeatherMap - https://openweathermap.org/ (GRATIS: 1000 richieste/giorno)
   /// Registrati e copia qui la tua API key
-  static const String openWeatherMapKey = 'HERE_YOUR_API';
+  static const String openWeatherMapKey = 'f7f778c623a2c8e3908b7d20ba9d62d3';
   
   /// OpenSky Network - GRATUITO e ILLIMITATO! Non serve API key 🎉
   static const bool useOpenSky = true;
