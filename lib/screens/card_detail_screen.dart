@@ -88,12 +88,14 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Card preview
-            Container(
-              margin: const EdgeInsets.all(24),
-              constraints: const BoxConstraints(minHeight: 160),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Column(
+            children: [
+              // Card preview
+              Container(
+                margin: const EdgeInsets.all(24),
+                constraints: const BoxConstraints(minHeight: 160),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -233,28 +235,24 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
             ),
             
             // Barcode display
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FullscreenBarcodeView(card: card),
-                          fullscreenDialog: true,
-                        ),
-                      );
-                    },
-                    child: Hero(
-                      tag: 'barcode_${card.id}',
-                      child: BarcodeDisplay(
-                        card: card,
-                        height: 180,
-                        width: double.infinity,
-                      ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FullscreenBarcodeView(card: card),
+                      fullscreenDialog: true,
                     ),
+                  );
+                },
+                child: Hero(
+                  tag: 'barcode_${card.id}',
+                  child: BarcodeDisplay(
+                    card: card,
+                    height: 180,
+                    width: double.infinity,
                   ),
                 ),
               ),
@@ -410,9 +408,8 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
             // Live flight info (API)
             if (card.category == CardCategories.voli && card.flightNumber != null)
               FlightLiveInfo(card: card),
-            
-            const SizedBox(height: 24),
           ],
+        ),
         ),
       ),
     );
