@@ -35,6 +35,9 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
   bool _isDragging = false;
   int _topCardIndex = 0;
   
+  // History stack for smart swipe (keeps track of cards sent to back)
+  final List<int> _swipeHistory = [];
+  
   // Card dimensions
   static const double _cardHeight = 180.0;
   static const double _cardPeekOffset = 25.0;
@@ -127,11 +130,22 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
     });
     
     _swipeController.forward().then((_) {
-      // Move top card to back
       setState(() {
         _dragX = 0;
         if (widget.cards.isNotEmpty) {
-          _topCardIndex = (_topCardIndex + 1) % widget.cards.length;
+          if (direction > 0) {
+            // Swipe RIGHT: move top card to back (save to history)
+            _swipeHistory.add(_topCardIndex);
+            _topCardIndex = (_topCardIndex + 1) % widget.cards.length;
+          } else {
+            // Swipe LEFT: bring back the last card from history
+            if (_swipeHistory.isNotEmpty) {
+              _topCardIndex = _swipeHistory.removeLast();
+            } else {
+              // No history, go to previous card in circular fashion
+              _topCardIndex = (_topCardIndex - 1 + widget.cards.length) % widget.cards.length;
+            }
+          }
           widget.onCardSwiped?.call(
             widget.cards[_topCardIndex], 
             _topCardIndex,
