@@ -49,18 +49,21 @@ class _FlightLiveInfoState extends State<FlightLiveInfo> {
     });
 
     try {
-      // Fetch flight info
+      // Fetch flight info from OpenSky (FREE!)
       final flightInfo = await _flightService.getFlightInfo(
         widget.card.flightNumber!,
         widget.card.flightDate,
       );
 
-      // Fetch weather at destination if we have arrival airport
+      // Fetch weather at destination if we have route info
       WeatherInfo? weatherInfo;
-      if (flightInfo?.arrivalAirport != null) {
-        weatherInfo = await _flightService.getWeatherAtAirport(
-          flightInfo!.arrivalAirport!,
-        );
+      if (widget.card.flightRoute != null) {
+        // Extract destination airport (e.g., "FCO → JFK" -> "JFK")
+        final route = widget.card.flightRoute!;
+        final destMatch = RegExp(r'→\s*(\w{3})').firstMatch(route);
+        if (destMatch != null) {
+          weatherInfo = await _flightService.getWeatherAtAirport(destMatch.group(1)!);
+        }
       }
 
       if (mounted) {
@@ -222,12 +225,16 @@ class _FlightLiveInfoState extends State<FlightLiveInfo> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Configura le API keys per info in tempo reale',
+                'Volo non in corso o dati non disponibili',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.6),
                   fontSize: 13,
                 ),
               ),
+            ),
+            TextButton(
+              onPressed: _fetchLiveInfo,
+              child: const Text('Riprova', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
@@ -241,38 +248,47 @@ class _FlightLiveInfoState extends State<FlightLiveInfo> {
           const Divider(color: Colors.white10),
           const SizedBox(height: 8),
           
-          // Gate info
-          if (_flightInfo!.departureGate != null)
+          // Flight status with position
+          if (_flightInfo!.altitude != null && !(_flightInfo!.onGround ?? true))
             _buildInfoRow(
-              '🚪',
-              'Gate',
-              _flightInfo!.departureGate!,
-              highlight: true,
+              '📍',
+              'Altitudine',
+              '${_flightInfo!.altitudeFeet?.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')} ft',
             ),
           
-          // Terminal
-          if (_flightInfo!.departureTerminal != null)
+          // Speed
+          if (_flightInfo!.velocity != null && !(_flightInfo!.onGround ?? true))
             _buildInfoRow(
-              '🏢',
-              'Terminal',
-              _flightInfo!.departureTerminal!,
+              '💨',
+              'Velocità',
+              '${_flightInfo!.velocityKmh} km/h (${_flightInfo!.velocityKnots} kts)',
             ),
           
-          // Delay warning
-          if (_flightInfo!.hasDelay)
+          // Heading
+          if (_flightInfo!.heading != null && !(_flightInfo!.onGround ?? true))
             _buildInfoRow(
-              '⚠️',
-              'Ritardo',
-              '+${_flightInfo!.delayMinutes} min',
-              isWarning: true,
+              '🧭',
+              'Direzione',
+              '${_flightInfo!.heading?.round()}° ${_flightInfo!.headingDirection}',
             ),
           
-          // Estimated departure
-          if (_flightInfo!.estimatedDeparture != null)
+          // Vertical rate
+          if (_flightInfo!.verticalRate != null && 
+              (_flightInfo!.verticalRate!.abs() > 1) &&
+              !(_flightInfo!.onGround ?? true))
             _buildInfoRow(
-              '🕐',
-              'Partenza stimata',
-              _formatTime(_flightInfo!.estimatedDeparture!),
+              _flightInfo!.verticalRate! > 0 ? '📈' : '📉',
+              _flightInfo!.verticalRate! > 0 ? 'In salita' : 'In discesa',
+              '${(_flightInfo!.verticalRate! * 196.85).round()} ft/min',
+              isWarning: _flightInfo!.verticalRate!.abs() > 10,
+            ),
+          
+          // Country of origin
+          if (_flightInfo!.originCountry != null)
+            _buildInfoRow(
+              '🌍',
+              'Origine',
+              _flightInfo!.originCountry!,
             ),
           
           // Weather at destination
@@ -382,9 +398,5 @@ class _FlightLiveInfoState extends State<FlightLiveInfo> {
         ),
       ],
     );
-  }
-
-  String _formatTime(DateTime dt) {
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }

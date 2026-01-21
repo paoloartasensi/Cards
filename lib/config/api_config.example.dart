@@ -3,9 +3,15 @@
 library;
 
 class ApiConfig {
-  // AviationStack - https://aviationstack.com/ (piano gratuito: 100 richieste/mese)
-  static const String aviationStackApiKey = 'YOUR_AVIATIONSTACK_API_KEY';
+  /// OpenWeatherMap - https://openweathermap.org/ (GRATIS: 1000 richieste/giorno)
+  /// Registrati e copia qui la tua API key
+  static const String openWeatherMapKey = 'f7f778c623a2c8e3908b7d20ba9d62d3';
   
-  // OpenWeatherMap - https://openweathermap.org/ (piano gratuito: 1000 richieste/giorno)
-  static const String openWeatherApiKey = 'YOUR_OPENWEATHER_API_KEY';
+  /// OpenSky Network - GRATUITO e ILLIMITATO! Non serve API key 🎉
+  static const bool useOpenSky = true;
+  
+  /// Check if APIs are configured
+  static bool get isFlightApiConfigured => useOpenSky;
+  static bool get isWeatherApiConfigured => openWeatherMapKey.isNotEmpty;
+  static bool get areApisConfigured => isFlightApiConfigured || isWeatherApiConfigured;
 }

@@ -3,45 +3,46 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 
-/// Service to fetch live flight information
+/// Service to fetch live flight information using FREE APIs
+/// - OpenSky Network: Free, unlimited, no API key needed!
+/// - OpenWeatherMap: Free tier 1000/day
 class FlightInfoService {
-  /// Fetch live flight info by flight number (e.g., "AZ610")
+  
+  /// Fetch live flight info using OpenSky Network (FREE!)
+  /// Uses callsign which is typically the flight number
   Future<FlightInfo?> getFlightInfo(String flightNumber, DateTime? flightDate) async {
-    if (!ApiConfig.isFlightApiConfigured) {
-      debugPrint('AviationStack API key not configured');
-      return null;
-    }
-
     try {
-      // Clean flight number
-      final cleanFlightNumber = flightNumber.replaceAll(' ', '').toUpperCase();
+      // Clean flight number to create callsign (e.g., "AZ 610" -> "AZA610" or "AZ610")
+      final callsign = flightNumber.replaceAll(' ', '').toUpperCase();
       
-      // Format date if provided
-      String? dateParam;
-      if (flightDate != null) {
-        dateParam = '${flightDate.year}-${flightDate.month.toString().padLeft(2, '0')}-${flightDate.day.toString().padLeft(2, '0')}';
-      }
-
-      final uri = Uri.parse(
-        'http://api.aviationstack.com/v1/flights'
-        '?access_key=${ApiConfig.aviationStackKey}'
-        '&flight_iata=$cleanFlightNumber'
-        '${dateParam != null ? '&flight_date=$dateParam' : ''}'
-      );
-
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      // OpenSky Network API - completely FREE, no API key!
+      // Get all current flights and filter by callsign
+      final uri = Uri.parse('https://opensky-network.org/api/states/all');
+      
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final flights = data['data'] as List?;
+        final states = data['states'] as List?;
         
-        if (flights != null && flights.isNotEmpty) {
-          final flight = flights.first;
-          return FlightInfo.fromAviationStack(flight);
+        if (states != null) {
+          // Find flight by callsign (index 1 in state vector)
+          // State vector: [icao24, callsign, origin_country, time_position, last_contact, 
+          //                longitude, latitude, baro_altitude, on_ground, velocity, 
+          //                true_track, vertical_rate, sensors, geo_altitude, squawk, 
+          //                spi, position_source]
+          for (final state in states) {
+            final stateCallsign = (state[1] as String?)?.trim().toUpperCase() ?? '';
+            // Match if callsign contains our flight number
+            if (stateCallsign.contains(callsign) || callsign.contains(stateCallsign)) {
+              return FlightInfo.fromOpenSky(state);
+            }
+          }
         }
       }
+      debugPrint('OpenSky: Flight $callsign not found in active flights');
     } catch (e) {
-      debugPrint('Error fetching flight info: $e');
+      debugPrint('Error fetching flight info from OpenSky: $e');
     }
     return null;
   }
@@ -104,93 +105,109 @@ class FlightInfoService {
   };
 }
 
-/// Live flight information
+/// Live flight information from OpenSky Network
 class FlightInfo {
-  final String? status; // scheduled, active, landed, cancelled, etc.
-  final String? departureAirport;
-  final String? arrivalAirport;
-  final String? departureTerminal;
-  final String? departureGate;
-  final String? arrivalTerminal;
-  final String? arrivalGate;
-  final DateTime? scheduledDeparture;
-  final DateTime? estimatedDeparture;
-  final DateTime? actualDeparture;
-  final DateTime? scheduledArrival;
-  final DateTime? estimatedArrival;
-  final int? delayMinutes;
+  final String? status; // in_flight, on_ground
+  final String? callsign;
+  final String? originCountry;
+  final double? longitude;
+  final double? latitude;
+  final double? altitude; // meters
+  final double? velocity; // m/s
+  final double? heading; // degrees from north
+  final double? verticalRate; // m/s
+  final bool? onGround;
 
   FlightInfo({
     this.status,
-    this.departureAirport,
-    this.arrivalAirport,
-    this.departureTerminal,
-    this.departureGate,
-    this.arrivalTerminal,
-    this.arrivalGate,
-    this.scheduledDeparture,
-    this.estimatedDeparture,
-    this.actualDeparture,
-    this.scheduledArrival,
-    this.estimatedArrival,
-    this.delayMinutes,
+    this.callsign,
+    this.originCountry,
+    this.longitude,
+    this.latitude,
+    this.altitude,
+    this.velocity,
+    this.heading,
+    this.verticalRate,
+    this.onGround,
   });
 
-  factory FlightInfo.fromAviationStack(Map<String, dynamic> json) {
-    final departure = json['departure'] as Map<String, dynamic>?;
-    final arrival = json['arrival'] as Map<String, dynamic>?;
+  /// Create from OpenSky state vector
+  /// [icao24, callsign, origin_country, time_position, last_contact, 
+  ///  longitude, latitude, baro_altitude, on_ground, velocity, 
+  ///  true_track, vertical_rate, sensors, geo_altitude, squawk, spi, position_source]
+  factory FlightInfo.fromOpenSky(List<dynamic> state) {
+    final isOnGround = state[8] as bool? ?? false;
+    
+    String status;
+    if (isOnGround) {
+      status = 'on_ground';
+    } else {
+      final vertRate = (state[11] as num?)?.toDouble() ?? 0;
+      if (vertRate > 2) {
+        status = 'climbing';
+      } else if (vertRate < -2) {
+        status = 'descending';
+      } else {
+        status = 'cruising';
+      }
+    }
     
     return FlightInfo(
-      status: json['flight_status'] as String?,
-      departureAirport: departure?['iata'] as String?,
-      arrivalAirport: arrival?['iata'] as String?,
-      departureTerminal: departure?['terminal'] as String?,
-      departureGate: departure?['gate'] as String?,
-      arrivalTerminal: arrival?['terminal'] as String?,
-      arrivalGate: arrival?['gate'] as String?,
-      scheduledDeparture: _parseDateTime(departure?['scheduled']),
-      estimatedDeparture: _parseDateTime(departure?['estimated']),
-      actualDeparture: _parseDateTime(departure?['actual']),
-      scheduledArrival: _parseDateTime(arrival?['scheduled']),
-      estimatedArrival: _parseDateTime(arrival?['estimated']),
-      delayMinutes: departure?['delay'] as int?,
+      status: status,
+      callsign: (state[1] as String?)?.trim(),
+      originCountry: state[2] as String?,
+      longitude: (state[5] as num?)?.toDouble(),
+      latitude: (state[6] as num?)?.toDouble(),
+      altitude: (state[7] as num?)?.toDouble(),
+      onGround: isOnGround,
+      velocity: (state[9] as num?)?.toDouble(),
+      heading: (state[10] as num?)?.toDouble(),
+      verticalRate: (state[11] as num?)?.toDouble(),
     );
-  }
-
-  static DateTime? _parseDateTime(String? dateStr) {
-    if (dateStr == null) return null;
-    try {
-      return DateTime.parse(dateStr);
-    } catch (e) {
-      return null;
-    }
   }
 
   String get statusDisplay {
     switch (status?.toLowerCase()) {
-      case 'scheduled': return 'Programmato';
-      case 'active': return 'In volo';
-      case 'landed': return 'Atterrato';
-      case 'cancelled': return 'Cancellato';
-      case 'diverted': return 'Dirottato';
-      case 'delayed': return 'In ritardo';
-      default: return status ?? 'Sconosciuto';
+      case 'on_ground': return 'A terra';
+      case 'climbing': return 'In salita';
+      case 'descending': return 'In discesa';
+      case 'cruising': return 'In crociera';
+      default: return 'In volo';
     }
   }
 
   String get statusEmoji {
     switch (status?.toLowerCase()) {
-      case 'scheduled': return '🕐';
-      case 'active': return '✈️';
-      case 'landed': return '✅';
-      case 'cancelled': return '❌';
-      case 'diverted': return '↩️';
-      case 'delayed': return '⚠️';
-      default: return '❓';
+      case 'on_ground': return '🛬';
+      case 'climbing': return '📈';
+      case 'descending': return '📉';
+      case 'cruising': return '✈️';
+      default: return '✈️';
     }
   }
 
-  bool get hasDelay => delayMinutes != null && delayMinutes! > 0;
+  /// Altitude in feet (more common in aviation)
+  int? get altitudeFeet => altitude != null ? (altitude! * 3.28084).round() : null;
+  
+  /// Velocity in km/h
+  int? get velocityKmh => velocity != null ? (velocity! * 3.6).round() : null;
+  
+  /// Velocity in knots (aviation standard)
+  int? get velocityKnots => velocity != null ? (velocity! * 1.94384).round() : null;
+  
+  /// Heading as compass direction
+  String get headingDirection {
+    if (heading == null) return '';
+    final h = heading!;
+    if (h >= 337.5 || h < 22.5) return 'N';
+    if (h >= 22.5 && h < 67.5) return 'NE';
+    if (h >= 67.5 && h < 112.5) return 'E';
+    if (h >= 112.5 && h < 157.5) return 'SE';
+    if (h >= 157.5 && h < 202.5) return 'S';
+    if (h >= 202.5 && h < 247.5) return 'SW';
+    if (h >= 247.5 && h < 292.5) return 'W';
+    return 'NW';
+  }
 }
 
 /// Weather information at destination
