@@ -317,14 +317,6 @@ class _FlightLiveInfoState extends State<FlightLiveInfo> {
               isWarning: _flightInfo!.verticalRate!.abs() > 10,
             ),
           
-          // Country of origin
-          if (_flightInfo!.originCountry != null)
-            _buildInfoRow(
-              '🌍',
-              'Origine',
-              _flightInfo!.originCountry!,
-            ),
-          
           // Weather at destination
           if (_weatherInfo != null) ...[
             const SizedBox(height: 8),
