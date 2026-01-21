@@ -34,8 +34,8 @@ class InfoScreen extends StatelessWidget {
               title: 'Cards',
               children: [
                 _buildInfoTile('Versione', '1.0.0'),
-                _buildInfoTile('Sviluppatore', 'Card Wallet Team'),
-                _buildInfoTile('Licenza', 'MIT License'),
+                _buildInfoTile('Build', '2026.01'),
+                _buildInfoTile('Sviluppatore', 'Paolo Artasensi'),
               ],
             ),
             const SizedBox(height: 20),
@@ -52,7 +52,40 @@ class InfoScreen extends StatelessWidget {
 • I dati delle tessere (nome, codice, categoria) sono memorizzati solo sul dispositivo
 • Non raccogliamo dati personali
 • Non utilizziamo servizi di tracciamento o analytics
-• La funzione di esportazione salva i dati in formato JSON sul tuo dispositivo''',
+• La funzione di esportazione salva i dati in formato JSON sul tuo dispositivo
+
+Per le tessere volo, l'app può connettersi a servizi esterni per info live (vedi sezione API).''',
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            // API & Services section
+            _buildSection(
+              icon: Icons.cloud,
+              title: 'Servizi & API',
+              children: [
+                _buildExpandableTile(
+                  'OpenSky Network',
+                  '''Utilizziamo OpenSky Network per il tracking dei voli in tempo reale.
+
+• Servizio: https://opensky-network.org
+• Licenza: Gratuito per uso non commerciale
+• Dati: Posizione, altitudine, velocità degli aerei
+• Privacy: Inviamo solo il numero di volo per cercare i dati
+
+OpenSky Network è una rete collaborativa di ricevitori ADS-B che fornisce dati di volo aperti.''',
+                ),
+                _buildExpandableTile(
+                  'OpenWeatherMap (opzionale)',
+                  '''Se configurato, utilizziamo OpenWeatherMap per il meteo a destinazione.
+
+• Servizio: https://openweathermap.org
+• Licenza: Gratuito fino a 1000 richieste/giorno
+• Dati: Temperatura, condizioni meteo
+• Privacy: Inviamo solo il codice aeroporto (es. FCO, JFK)
+
+Richiede API key configurata dall'utente.''',
                 ),
               ],
             ),
@@ -112,11 +145,38 @@ Per ripristinare le tessere, usa la funzione Importa tessere e seleziona il file
             // Credits section
             _buildSection(
               icon: Icons.favorite,
-              title: 'Crediti',
+              title: 'Crediti & Licenze',
               children: [
-                _buildInfoTile('Framework', 'Flutter'),
-                _buildInfoTile('Database', 'Hive'),
-                _buildInfoTile('Icone', 'Material Icons'),
+                _buildExpandableTile(
+                  'Tecnologie utilizzate',
+                  '''• Flutter - Framework UI (BSD License)
+• Hive - Database locale (Apache 2.0)
+• Material Icons - Icone (Apache 2.0)
+• connectivity_plus - Connettività (BSD)
+• barcode_widget - Generazione barcode (MIT)
+• mobile_scanner - Scanner fotocamera (BSD)
+• screen_brightness - Luminosità schermo (MIT)
+• share_plus - Condivisione (BSD)''',
+                ),
+                _buildExpandableTile(
+                  'Servizi esterni',
+                  '''• OpenSky Network - Tracking voli (CC BY-NC 4.0)
+  https://opensky-network.org
+  
+• OpenWeatherMap - Dati meteo (CC BY-SA 4.0)
+  https://openweathermap.org
+  
+• Clearbit Logo API - Loghi brand (gratuito)
+  https://clearbit.com''',
+                ),
+                _buildExpandableTile(
+                  'Open Source',
+                  '''Cards è sviluppata con componenti open source.
+
+Il codice sorgente dei pacchetti utilizzati è disponibile su pub.dev e GitHub.
+
+Ringraziamo tutti i contributori della community Flutter!''',
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -126,8 +186,8 @@ Per ripristinare le tessere, usa la funzione Importa tessere e seleziona il file
               icon: Icons.email,
               title: 'Contatti',
               children: [
-                _buildInfoTile('Email', 'support@cardwallet.app'),
-                _buildInfoTile('Sito Web', 'dev.paoloartasensi.it/apps'),
+                _buildInfoTile('Sviluppatore', 'Paolo Artasensi'),
+                _buildInfoTile('Sito Web', 'dev.paoloartasensi.it'),
               ],
             ),
             const SizedBox(height: 40),

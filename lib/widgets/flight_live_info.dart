@@ -325,11 +325,18 @@ class _FlightLiveInfoState extends State<FlightLiveInfo> {
             _buildWeatherRow(),
           ],
           
-          // Refresh button
+          // Refresh button and source
           const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              Text(
+                'via OpenSky Network',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 10,
+                ),
+              ),
+              const Spacer(),
               TextButton.icon(
                 onPressed: _fetchLiveInfo,
                 icon: Icon(Icons.refresh, size: 16, 
