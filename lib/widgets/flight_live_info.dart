@@ -21,6 +21,7 @@ class _FlightLiveInfoState extends State<FlightLiveInfo> {
   bool _hasError = false;
   bool _isExpanded = false;
   String? _errorMessage;
+  String? _dateWarning; // Warning if flight date doesn't match today
 
   @override
   void initState() {
@@ -32,6 +33,20 @@ class _FlightLiveInfoState extends State<FlightLiveInfo> {
     // Check if we have a flight number
     if (widget.card.flightNumber == null || widget.card.flightNumber!.isEmpty) {
       return;
+    }
+
+    // Check flight date and set warning
+    _dateWarning = null;
+    if (widget.card.flightDate != null) {
+      final now = DateTime.now();
+      final flightDate = widget.card.flightDate!;
+      final daysUntilFlight = flightDate.difference(DateTime(now.year, now.month, now.day)).inDays;
+      
+      if (daysUntilFlight > 0) {
+        _dateWarning = '⚠️ Il tuo volo è tra $daysUntilFlight ${daysUntilFlight == 1 ? "giorno" : "giorni"} - questi dati sono del volo di oggi';
+      } else if (daysUntilFlight < 0) {
+        _dateWarning = '⚠️ Il tuo volo era ${-daysUntilFlight} ${daysUntilFlight == -1 ? "giorno" : "giorni"} fa - questi dati sono del volo di oggi';
+      }
     }
 
     // Check connectivity
@@ -247,6 +262,25 @@ class _FlightLiveInfoState extends State<FlightLiveInfo> {
         children: [
           const Divider(color: Colors.white10),
           const SizedBox(height: 8),
+          
+          // Date warning if flight is not today
+          if (_dateWarning != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                _dateWarning!,
+                style: TextStyle(
+                  color: Colors.orange.shade300,
+                  fontSize: 12,
+                ),
+              ),
+            ),
           
           // Flight status with position
           if (_flightInfo!.altitude != null && !(_flightInfo!.onGround ?? true))
