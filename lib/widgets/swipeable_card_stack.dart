@@ -35,6 +35,9 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
   bool _isDragging = false;
   int _topCardIndex = 0;
   
+  // For swipe left animation - showing incoming card from right
+  bool _isSwipingLeft = false;
+  
   // Card dimensions
   static const double _cardHeight = 180.0;
   static const double _cardPeekOffset = 25.0;
@@ -88,6 +91,8 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
     if (!_isDragging) return;
     setState(() {
       _dragX = details.localPosition.dx - _dragStartX;
+      // Track if swiping left to show incoming card
+      _isSwipingLeft = _dragX < 0;
     });
   }
 
@@ -111,33 +116,48 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
     final screenWidth = MediaQuery.of(context).size.width;
     final targetX = direction * (screenWidth + 100);
     
-    // Create curved animation for exit
+    // Create curved animation for exit - different curves for each direction
     final curved = CurvedAnimation(
       parent: _swipeController,
-      curve: Curves.easeOutCubic,
+      // Swipe left (bringing back): smooth deceleration, no bounce
+      // Swipe right (sending away): ease out cubic for natural exit
+      curve: direction < 0 ? Curves.easeOut : Curves.easeOutCubic,
     );
     
     final startX = _dragX;
+    final wasSwipingLeft = direction < 0;
+    bool hapticTriggered = false;
     
     _swipeController.reset();
     _swipeController.addListener(() {
+      final animValue = curved.value;
       setState(() {
-        _dragX = startX + (targetX - startX) * curved.value;
+        _dragX = startX + (targetX - startX) * animValue;
+        _isSwipingLeft = wasSwipingLeft;
       });
+      
+      // Trigger haptic when incoming card reaches ~90% of its journey (lands on stack)
+      if (wasSwipingLeft && !hapticTriggered && animValue > 0.9) {
+        hapticTriggered = true;
+        HapticFeedback.mediumImpact();
+      }
     });
     
     _swipeController.forward().then((_) {
-      // Haptic feedback when swipe completes
-      HapticFeedback.mediumImpact();
+      // Haptic for swipe right (card leaving) - at the end
+      if (!wasSwipingLeft) {
+        HapticFeedback.lightImpact();
+      }
       
       setState(() {
         _dragX = 0;
+        _isSwipingLeft = false;
         if (widget.cards.isNotEmpty) {
-          if (direction < 0) {
-            // Swipe LEFT: next card (like scrolling forward in a gallery)
+          if (direction > 0) {
+            // Swipe RIGHT: send card to back
             _topCardIndex = (_topCardIndex + 1) % widget.cards.length;
           } else {
-            // Swipe RIGHT: previous card (like scrolling back in a gallery)
+            // Swipe LEFT: bring back previous card
             _topCardIndex = (_topCardIndex - 1 + widget.cards.length) % widget.cards.length;
           }
           widget.onCardSwiped?.call(
@@ -160,6 +180,7 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
       final t = Curves.elasticOut.transform(_returnController.value);
       setState(() {
         _dragX = startX * (1 - t);
+        if (_dragX.abs() < 1) _isSwipingLeft = false;
       });
     });
     
@@ -175,75 +196,118 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
     final screenWidth = MediaQuery.of(context).size.width;
     final maxCards = math.min(widget.cards.length, 4);
     
+    // Calculate swipe progress for incoming card (only when swiping left)
+    final swipeLeftProgress = _isSwipingLeft ? (_dragX.abs() / screenWidth).clamp(0.0, 1.0) : 0.0;
+    
     return SizedBox(
       height: _cardHeight + (_cardPeekOffset * (maxCards - 1)) + 40,
       child: Stack(
         clipBehavior: Clip.none,
-        children: List.generate(maxCards, (stackIndex) {
-          // Map stack index to actual card index
-          final actualIndex = (_topCardIndex + (maxCards - 1 - stackIndex)) % widget.cards.length;
-          final card = widget.cards[actualIndex];
-          final isTopCard = stackIndex == maxCards - 1;
-          
-          // Calculate position and scale based on stack position
-          final baseOffset = stackIndex * _cardPeekOffset;
-          final scale = 1.0 - ((maxCards - 1 - stackIndex) * _cardScaleDecrement);
-          
-          // Apply drag transformation only to top card
-          double xOffset = 0;
-          double rotation = 0;
-          double yOffset = baseOffset;
-          double currentScale = scale;
-          
-          if (isTopCard) {
-            xOffset = _dragX;
-            // Rotation based on drag (max 15 degrees)
-            rotation = (_dragX / screenWidth) * 0.26; // ~15 degrees in radians
+        children: [
+          // Regular stack cards
+          ...List.generate(maxCards, (stackIndex) {
+            // Map stack index to actual card index
+            final actualIndex = (_topCardIndex + (maxCards - 1 - stackIndex)) % widget.cards.length;
+            final card = widget.cards[actualIndex];
+            final isTopCard = stackIndex == maxCards - 1;
             
-            // Subtle arc - move up slightly during swipe
-            final swipeProgress = (_dragX.abs() / screenWidth).clamp(0.0, 1.0);
-            yOffset = baseOffset - (swipeProgress * 20);
-          } else if (stackIndex == maxCards - 2 && _dragX.abs() > 0) {
-            // Second card scales up as top card is dragged
-            final swipeProgress = (_dragX.abs() / screenWidth).clamp(0.0, 1.0);
-            currentScale = scale + (swipeProgress * _cardScaleDecrement);
-            yOffset = baseOffset - (swipeProgress * _cardPeekOffset * 0.5);
-          }
-          
-          return AnimatedPositioned(
-            duration: _isDragging ? Duration.zero : const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            top: yOffset,
-            left: 0,
-            right: 0,
-            child: AnimatedBuilder(
-              animation: _shakeController,
-              builder: (context, child) {
-                double animatedShakeOffset = 0;
-                if (isTopCard && !_isDragging && _dragX == 0) {
-                  final shakeProgress = _shakeController.value;
-                  animatedShakeOffset = math.sin(shakeProgress * math.pi * 4) * (1 - shakeProgress) * 12;
-                }
-                
-                return GestureDetector(
-                  onPanStart: isTopCard ? _onPanStart : null,
-                  onPanUpdate: isTopCard ? _onPanUpdate : null,
-                  onPanEnd: isTopCard ? _onPanEnd : null,
-                  child: Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.diagonal3Values(currentScale, currentScale, 1.0)
-                      ..setEntry(0, 3, (xOffset + animatedShakeOffset) * currentScale)
-                      ..rotateZ(rotation),
-                    child: Opacity(
-                      opacity: isTopCard ? 1.0 : (0.6 + (stackIndex * 0.15)).clamp(0.0, 1.0),
-                      child: _buildCard(card, isTopCard),
+            // Calculate position and scale based on stack position
+            final baseOffset = stackIndex * _cardPeekOffset;
+            final scale = 1.0 - ((maxCards - 1 - stackIndex) * _cardScaleDecrement);
+            
+            // Apply drag transformation only to top card
+            double xOffset = 0;
+            double rotation = 0;
+            double yOffset = baseOffset;
+            double currentScale = scale;
+            
+            if (isTopCard) {
+              xOffset = _dragX;
+              // Rotation based on drag (max 15 degrees)
+              rotation = (_dragX / screenWidth) * 0.26; // ~15 degrees in radians
+              
+              // Subtle arc - move up slightly during swipe
+              final swipeProgress = (_dragX.abs() / screenWidth).clamp(0.0, 1.0);
+              yOffset = baseOffset - (swipeProgress * 20);
+            } else if (stackIndex == maxCards - 2 && _dragX > 0) {
+              // Second card scales up as top card is dragged RIGHT (sending to back)
+              final swipeProgress = (_dragX / screenWidth).clamp(0.0, 1.0);
+              currentScale = scale + (swipeProgress * _cardScaleDecrement);
+              yOffset = baseOffset - (swipeProgress * _cardPeekOffset * 0.5);
+            }
+            
+            return AnimatedPositioned(
+              duration: _isDragging ? Duration.zero : const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              top: yOffset,
+              left: 0,
+              right: 0,
+              child: AnimatedBuilder(
+                animation: _shakeController,
+                builder: (context, child) {
+                  double animatedShakeOffset = 0;
+                  if (isTopCard && !_isDragging && _dragX == 0) {
+                    final shakeProgress = _shakeController.value;
+                    animatedShakeOffset = math.sin(shakeProgress * math.pi * 4) * (1 - shakeProgress) * 12;
+                  }
+                  
+                  return GestureDetector(
+                    onPanStart: isTopCard ? _onPanStart : null,
+                    onPanUpdate: isTopCard ? _onPanUpdate : null,
+                    onPanEnd: isTopCard ? _onPanEnd : null,
+                    child: Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.diagonal3Values(currentScale, currentScale, 1.0)
+                        ..setEntry(0, 3, (xOffset + animatedShakeOffset) * currentScale)
+                        ..rotateZ(rotation),
+                      child: Opacity(
+                        opacity: isTopCard ? 1.0 : (0.6 + (stackIndex * 0.15)).clamp(0.0, 1.0),
+                        child: _buildCard(card, isTopCard),
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-          );
-        }),
+                  );
+                },
+              ),
+            );
+          }),
+          
+          // Incoming card from RIGHT (only when swiping left)
+          if (_isSwipingLeft && widget.cards.length > 1)
+            _buildIncomingCard(maxCards, swipeLeftProgress, screenWidth),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildIncomingCard(int maxCards, double progress, double screenWidth) {
+    // The card that will become the new top (previous card in list)
+    final previousIndex = (_topCardIndex - 1 + widget.cards.length) % widget.cards.length;
+    final card = widget.cards[previousIndex];
+    
+    // Start from right side and slide in with arc motion
+    final topPosition = (maxCards - 1) * _cardPeekOffset;
+    final startX = screenWidth + 50;
+    final endX = 0.0;
+    final currentX = startX + (progress * (endX - startX));
+    
+    // Arc motion - card comes up then settles down (like the outgoing card but reversed)
+    final arcOffset = math.sin(progress * math.pi) * 20;
+    final yOffset = topPosition - arcOffset;
+    
+    // Rotation that matches the arc - starts rotated, ends straight
+    final rotation = (1 - progress) * -0.26; // Same max rotation as outgoing card
+    
+    return Positioned(
+      top: yOffset,
+      left: currentX,
+      right: -currentX,
+      child: Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.identity()..rotateZ(rotation),
+        child: Opacity(
+          opacity: progress.clamp(0.0, 1.0),
+          child: _buildCard(card, false),
+        ),
       ),
     );
   }
