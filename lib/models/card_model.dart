@@ -32,6 +32,31 @@ class CardModel extends HiveObject {
   @HiveField(8)
   String? brandDomain; // Kept for backward compatibility with existing data
 
+  // Flight-specific fields (optional, used when category is "Voli")
+  @HiveField(9)
+  DateTime? flightDate;
+
+  @HiveField(10)
+  String? flightRoute; // e.g., "FCO → JFK"
+
+  @HiveField(11)
+  String? flightNumber; // e.g., "AZ610"
+
+  @HiveField(12)
+  String? departureTime; // e.g., "14:30"
+
+  @HiveField(13)
+  String? seatNumber; // e.g., "23A"
+
+  @HiveField(14)
+  String? travelClass; // e.g., "Economy", "Business"
+
+  @HiveField(15)
+  String? pnr; // Booking reference
+
+  @HiveField(16)
+  String? passengerName; // Passenger name from boarding pass
+
   CardModel({
     required this.id,
     required this.name,
@@ -42,6 +67,14 @@ class CardModel extends HiveObject {
     DateTime? createdAt,
     this.note,
     this.brandDomain,
+    this.flightDate,
+    this.flightRoute,
+    this.flightNumber,
+    this.departureTime,
+    this.seatNumber,
+    this.travelClass,
+    this.pnr,
+    this.passengerName,
   }) : createdAt = createdAt ?? DateTime.now();
 
   /// Get Color from colorValue
@@ -57,6 +90,14 @@ class CardModel extends HiveObject {
     int? colorValue,
     DateTime? createdAt,
     String? note,
+    DateTime? flightDate,
+    String? flightRoute,
+    String? flightNumber,
+    String? departureTime,
+    String? seatNumber,
+    String? travelClass,
+    String? pnr,
+    String? passengerName,
   }) {
     return CardModel(
       id: id ?? this.id,
@@ -67,6 +108,14 @@ class CardModel extends HiveObject {
       colorValue: colorValue ?? this.colorValue,
       createdAt: createdAt ?? this.createdAt,
       note: note ?? this.note,
+      flightDate: flightDate ?? this.flightDate,
+      flightRoute: flightRoute ?? this.flightRoute,
+      flightNumber: flightNumber ?? this.flightNumber,
+      departureTime: departureTime ?? this.departureTime,
+      seatNumber: seatNumber ?? this.seatNumber,
+      travelClass: travelClass ?? this.travelClass,
+      pnr: pnr ?? this.pnr,
+      passengerName: passengerName ?? this.passengerName,
     );
   }
 
@@ -81,6 +130,14 @@ class CardModel extends HiveObject {
       'colorValue': colorValue,
       'createdAt': createdAt.toIso8601String(),
       'note': note,
+      'flightDate': flightDate?.toIso8601String(),
+      'flightRoute': flightRoute,
+      'flightNumber': flightNumber,
+      'departureTime': departureTime,
+      'seatNumber': seatNumber,
+      'travelClass': travelClass,
+      'pnr': pnr,
+      'passengerName': passengerName,
     };
   }
 
@@ -95,6 +152,16 @@ class CardModel extends HiveObject {
       colorValue: json['colorValue'] as int? ?? 0xFF2196F3,
       createdAt: DateTime.parse(json['createdAt'] as String),
       note: json['note'] as String?,
+      flightDate: json['flightDate'] != null 
+          ? DateTime.parse(json['flightDate'] as String) 
+          : null,
+      flightRoute: json['flightRoute'] as String?,
+      flightNumber: json['flightNumber'] as String?,
+      departureTime: json['departureTime'] as String?,
+      seatNumber: json['seatNumber'] as String?,
+      travelClass: json['travelClass'] as String?,
+      pnr: json['pnr'] as String?,
+      passengerName: json['passengerName'] as String?,
     );
   }
 }
@@ -143,9 +210,33 @@ class BarcodeTypes {
 /// Card categories
 class CardCategories {
   static const String supermercato = 'Supermercato';
-  static const String voli = 'Voli';
   static const String negozi = 'Negozi';
+  static const String trasporti = 'Trasporti';
+  static const String voli = 'Voli';
+  static const String sport = 'Sport';
+  static const String salute = 'Salute';
+  static const String carburante = 'Carburante';
+  static const String ristorazione = 'Ristorazione';
   static const String altro = 'Altro';
 
-  static const List<String> all = [supermercato, voli, negozi, altro];
+  static const List<String> all = [
+    supermercato, negozi, trasporti, voli, 
+    sport, salute, carburante, ristorazione, altro,
+  ];
+
+  /// Get icon for category
+  static String getIcon(String category) {
+    switch (category) {
+      case supermercato: return '🛒';
+      case negozi: return '🛍️';
+      case trasporti: return '🚇';
+      case voli: return '✈️';
+      case sport: return '🏋️';
+      case salute: return '💊';
+      case carburante: return '⛽';
+      case ristorazione: return '🍕';
+      case altro: return '📇';
+      default: return '📇';
+    }
+  }
 }

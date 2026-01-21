@@ -26,13 +26,17 @@ class CardModelAdapter extends TypeAdapter<CardModel> {
       createdAt: fields[6] as DateTime?,
       note: fields[7] as String?,
       brandDomain: fields[8] as String?,
+      flightDate: fields[9] as DateTime?,
+      flightRoute: fields[10] as String?,
+      flightNumber: fields[11] as String?,
+      departureTime: fields[12] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CardModel obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +54,15 @@ class CardModelAdapter extends TypeAdapter<CardModel> {
       ..writeByte(7)
       ..write(obj.note)
       ..writeByte(8)
-      ..write(obj.brandDomain);
+      ..write(obj.brandDomain)
+      ..writeByte(9)
+      ..write(obj.flightDate)
+      ..writeByte(10)
+      ..write(obj.flightRoute)
+      ..writeByte(11)
+      ..write(obj.flightNumber)
+      ..writeByte(12)
+      ..write(obj.departureTime);
   }
 
   @override

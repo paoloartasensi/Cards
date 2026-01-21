@@ -60,8 +60,9 @@ dependencies:
   share_plus: ^10.1.4
   file_picker: ^10.1.5
   screen_brightness: ^2.1.6
-  http: ^1.2.0
+  http: ^1.6.0
   cached_network_image: ^3.3.1
+  connectivity_plus: ^7.0.0
 
 dev_dependencies:
   flutter_test:

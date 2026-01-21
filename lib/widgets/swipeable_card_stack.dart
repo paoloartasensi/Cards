@@ -383,35 +383,92 @@ class _SwipeableCardStackState extends State<SwipeableCardStack>
                             color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Text(
-                            card.category,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                CardCategories.getIcon(card.category),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                card.category,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                     const Spacer(),
-                    Text(
-                      BarcodeTypes.getDisplayName(card.codeType),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 12,
+                    // Show flight info for Voli category, otherwise show barcode info
+                    if (card.category == CardCategories.voli && 
+                        (card.flightRoute != null || card.flightDate != null)) ...[
+                      if (card.flightRoute != null)
+                        Text(
+                          card.flightRoute!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          if (card.flightNumber != null) ...[
+                            Text(
+                              card.flightNumber!,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
+                          if (card.flightDate != null)
+                            Text(
+                              '${card.flightDate!.day.toString().padLeft(2, '0')}/${card.flightDate!.month.toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 14,
+                              ),
+                            ),
+                          if (card.departureTime != null) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              '• ${card.departureTime}',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      card.code,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 16,
-                        fontFamily: 'monospace',
-                        letterSpacing: 1.5,
+                    ] else ...[
+                      Text(
+                        BarcodeTypes.getDisplayName(card.codeType),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 4),
+                      Text(
+                        card.code,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 16,
+                          fontFamily: 'monospace',
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

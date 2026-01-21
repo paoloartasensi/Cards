@@ -4,6 +4,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../models/card_model.dart';
 import '../providers/cards_provider.dart';
 import '../services/scanner_service.dart';
+import '../services/bcbp_parser.dart';
 
 /// Screen for adding or editing a card
 class AddCardScreen extends ConsumerStatefulWidget {
@@ -24,6 +25,18 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   final _noteController = TextEditingController();
   final _scannerService = ScannerService();
   
+  // Flight-specific controllers
+  final _flightRouteController = TextEditingController();
+  final _flightNumberController = TextEditingController();
+  final _departureTimeController = TextEditingController();
+  DateTime? _flightDate;
+  
+  // Additional flight fields (from boarding pass)
+  String? _seatNumber;
+  String? _travelClass;
+  String? _pnr;
+  String? _passengerName;
+  
   late String _selectedCategory;
   late String _selectedCodeType;
   late int _selectedColor;
@@ -41,6 +54,11 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
       _selectedCategory = card.category;
       _selectedCodeType = card.codeType;
       _selectedColor = card.colorValue;
+      // Flight fields
+      _flightRouteController.text = card.flightRoute ?? '';
+      _flightNumberController.text = card.flightNumber ?? '';
+      _departureTimeController.text = card.departureTime ?? '';
+      _flightDate = card.flightDate;
     } else {
       _selectedCategory = CardCategories.altro;
       _selectedCodeType = BarcodeTypes.code128;
@@ -53,6 +71,9 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     _nameController.dispose();
     _codeController.dispose();
     _noteController.dispose();
+    _flightRouteController.dispose();
+    _flightNumberController.dispose();
+    _departureTimeController.dispose();
     _scannerController?.dispose();
     super.dispose();
   }
@@ -88,16 +109,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     final result = _scannerService.parseMobileScannerBarcode(capture);
     if (result != null) {
       _stopScanner();
-      setState(() {
-        _codeController.text = result.code;
-        _selectedCodeType = result.codeType;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Codice rilevato: ${BarcodeTypes.getDisplayName(result.codeType)}'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      _processScannedCode(result.code, result.codeType);
     }
   }
 
@@ -105,18 +117,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     try {
       final result = await _scannerService.scanFromGallery();
       if (result != null) {
-        setState(() {
-          _codeController.text = result.code;
-          _selectedCodeType = result.codeType;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Codice rilevato: ${BarcodeTypes.getDisplayName(result.codeType)}'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
+        _processScannedCode(result.code, result.codeType);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -139,8 +140,161 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     }
   }
 
+  /// Process scanned barcode - detect boarding pass and auto-fill fields
+  void _processScannedCode(String code, String codeType) {
+    setState(() {
+      _codeController.text = code;
+      _selectedCodeType = codeType;
+    });
+
+    // Try to detect if it's a boarding pass
+    if (BcbpParser.isBoardingPass(code, codeType)) {
+      final bcbpData = BcbpParser.parse(code);
+      
+      if (bcbpData != null && bcbpData.isValid) {
+        // Auto-fill all flight fields!
+        setState(() {
+          _selectedCategory = CardCategories.voli;
+          
+          // Set suggested name or use flight number
+          if (_nameController.text.isEmpty) {
+            _nameController.text = bcbpData.suggestedCardName;
+          }
+          
+          // Fill flight-specific fields
+          if (bcbpData.route != null) {
+            _flightRouteController.text = bcbpData.route!;
+          }
+          if (bcbpData.flightNumber != null) {
+            _flightNumberController.text = bcbpData.flightNumber!;
+          }
+          if (bcbpData.flightDate != null) {
+            _flightDate = bcbpData.flightDate;
+          }
+          
+          // Save additional boarding pass info
+          _seatNumber = bcbpData.seatNumber;
+          _travelClass = bcbpData.travelClass;
+          _pnr = bcbpData.pnr;
+          _passengerName = bcbpData.passengerName;
+          
+          // Set a nice color for flights
+          _selectedColor = 0xFF2196F3; // Blue for flights
+        });
+
+        // Show success message with extracted info
+        if (mounted) {
+          _showBoardingPassDetectedDialog(bcbpData);
+        }
+        return;
+      }
+    }
+
+    // Regular barcode - just show simple message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Codice rilevato: ${BarcodeTypes.getDisplayName(codeType)}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  /// Show dialog when boarding pass is detected
+  void _showBoardingPassDetectedDialog(BcbpData data) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Text('✈️', style: TextStyle(fontSize: 24)),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Boarding Pass rilevato!',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (data.passengerName != null)
+              _buildInfoItem('👤 Passeggero', data.passengerName!),
+            if (data.flightNumber != null)
+              _buildInfoItem('✈️ Volo', data.flightNumber!),
+            if (data.route != null)
+              _buildInfoItem('📍 Tratta', data.route!),
+            if (data.flightDate != null)
+              _buildInfoItem('📅 Data', 
+                '${data.flightDate!.day.toString().padLeft(2, '0')}/${data.flightDate!.month.toString().padLeft(2, '0')}/${data.flightDate!.year}'),
+            if (data.seatNumber != null)
+              _buildInfoItem('💺 Posto', data.seatNumber!),
+            if (data.travelClass != null)
+              _buildInfoItem('🎫 Classe', data.travelClass!),
+            if (data.pnr != null)
+              _buildInfoItem('🔖 PNR', data.pnr!),
+            const SizedBox(height: 12),
+            Text(
+              'I campi sono stati compilati automaticamente!',
+              style: TextStyle(
+                color: Colors.green.shade300,
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK', style: TextStyle(color: Colors.blue)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _saveCard() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    final isFlightCategory = _selectedCategory == CardCategories.voli;
     
     try {
       if (widget.isEditing) {
@@ -152,6 +306,17 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
           category: _selectedCategory,
           colorValue: _selectedColor,
           note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+          flightDate: isFlightCategory ? _flightDate : null,
+          flightRoute: isFlightCategory && _flightRouteController.text.trim().isNotEmpty
+              ? _flightRouteController.text.trim() : null,
+          flightNumber: isFlightCategory && _flightNumberController.text.trim().isNotEmpty
+              ? _flightNumberController.text.trim() : null,
+          departureTime: isFlightCategory && _departureTimeController.text.trim().isNotEmpty
+              ? _departureTimeController.text.trim() : null,
+          seatNumber: isFlightCategory ? _seatNumber : null,
+          travelClass: isFlightCategory ? _travelClass : null,
+          pnr: isFlightCategory ? _pnr : null,
+          passengerName: isFlightCategory ? _passengerName : null,
         );
         await ref.read(cardsProvider.notifier).updateCard(updatedCard);
       } else {
@@ -163,6 +328,17 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
           category: _selectedCategory,
           colorValue: _selectedColor,
           note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+          flightDate: isFlightCategory ? _flightDate : null,
+          flightRoute: isFlightCategory && _flightRouteController.text.trim().isNotEmpty
+              ? _flightRouteController.text.trim() : null,
+          flightNumber: isFlightCategory && _flightNumberController.text.trim().isNotEmpty
+              ? _flightNumberController.text.trim() : null,
+          departureTime: isFlightCategory && _departureTimeController.text.trim().isNotEmpty
+              ? _departureTimeController.text.trim() : null,
+          seatNumber: isFlightCategory ? _seatNumber : null,
+          travelClass: isFlightCategory ? _travelClass : null,
+          pnr: isFlightCategory ? _pnr : null,
+          passengerName: isFlightCategory ? _passengerName : null,
         );
       }
 
@@ -363,18 +539,34 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                           : Colors.white.withValues(alpha: 0.1),
                       ),
                     ),
-                    child: Text(
-                      category,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.7),
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          CardCategories.getIcon(category),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          category,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.7),
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );
               }).toList(),
             ),
             const SizedBox(height: 16),
+
+            // Flight-specific fields (only when category is Voli)
+            if (_selectedCategory == CardCategories.voli) ...[
+              _buildFlightFields(),
+              const SizedBox(height: 16),
+            ],
 
             // Color selector
             _buildLabel('Colore'),
@@ -460,6 +652,132 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
         fontWeight: FontWeight.w500,
       ),
     );
+  }
+
+  Widget _buildFlightFields() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('✈️', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Text(
+                'Dettagli Volo',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Flight route
+          _buildTextField(
+            controller: _flightRouteController,
+            label: 'Tratta',
+            hint: 'es. FCO → JFK',
+            icon: Icons.flight_takeoff,
+          ),
+          const SizedBox(height: 12),
+          
+          // Flight number and departure time in a row
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField(
+                  controller: _flightNumberController,
+                  label: 'N° Volo',
+                  hint: 'es. AZ610',
+                  icon: Icons.confirmation_number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextField(
+                  controller: _departureTimeController,
+                  label: 'Orario',
+                  hint: 'es. 14:30',
+                  icon: Icons.access_time,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Flight date picker
+          _buildLabel('Data del volo'),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _selectFlightDate,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, color: Colors.white.withValues(alpha: 0.5)),
+                  const SizedBox(width: 12),
+                  Text(
+                    _flightDate != null
+                        ? '${_flightDate!.day.toString().padLeft(2, '0')}/${_flightDate!.month.toString().padLeft(2, '0')}/${_flightDate!.year}'
+                        : 'Seleziona data',
+                    style: TextStyle(
+                      color: _flightDate != null 
+                          ? Colors.white 
+                          : Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_flightDate != null)
+                    GestureDetector(
+                      onTap: () => setState(() => _flightDate = null),
+                      child: Icon(Icons.clear, color: Colors.white.withValues(alpha: 0.5), size: 20),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectFlightDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _flightDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: Color(_selectedColor),
+              onPrimary: Colors.white,
+              surface: const Color(0xFF1E1E1E),
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() => _flightDate = picked);
+    }
   }
 
   Widget _buildTextField({

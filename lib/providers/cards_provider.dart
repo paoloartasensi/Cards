@@ -59,6 +59,14 @@ class CardsNotifier extends StateNotifier<List<CardModel>> {
     String category = 'Altro',
     int colorValue = 0xFF2196F3,
     String? note,
+    DateTime? flightDate,
+    String? flightRoute,
+    String? flightNumber,
+    String? departureTime,
+    String? seatNumber,
+    String? travelClass,
+    String? pnr,
+    String? passengerName,
   }) async {
     final card = CardModel(
       id: _uuid.v4(),
@@ -68,6 +76,14 @@ class CardsNotifier extends StateNotifier<List<CardModel>> {
       category: category,
       colorValue: colorValue,
       note: note,
+      flightDate: flightDate,
+      flightRoute: flightRoute,
+      flightNumber: flightNumber,
+      departureTime: departureTime,
+      seatNumber: seatNumber,
+      travelClass: travelClass,
+      pnr: pnr,
+      passengerName: passengerName,
     );
     
     await _storageService.addCard(card);
