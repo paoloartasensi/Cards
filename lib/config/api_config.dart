@@ -14,7 +14,7 @@ library;
 class ApiConfig {
   /// OpenWeatherMap API key for weather information
   /// Get yours FREE at: https://openweathermap.org/api
-  static const String openWeatherMapKey = '';
+  static const String openWeatherMapKey = 'f7f778c623a2c8e3908b7d20ba9d62d3';
   
   /// OpenSky Network - NO API KEY NEEDED! 🎉
   /// Completely free and unlimited
