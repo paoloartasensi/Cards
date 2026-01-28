@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'models/card_model.dart';
 import 'screens/home_screen.dart';
+import 'services/preferences_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,9 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(CardModelAdapter());
   await Hive.openBox<CardModel>('cards');
+  
+  // Initialize SharedPreferences
+  final prefsService = await PreferencesService.getInstance();
   
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
@@ -29,11 +33,13 @@ void main() async {
     ),
   );
   
-  runApp(const ProviderScope(child: CardWalletApp()));
+  runApp(ProviderScope(child: CardWalletApp(preferencesService: prefsService)));
 }
 
 class CardWalletApp extends StatelessWidget {
-  const CardWalletApp({super.key});
+  final PreferencesService preferencesService;
+  
+  const CardWalletApp({super.key, required this.preferencesService});
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +64,7 @@ class CardWalletApp extends StatelessWidget {
           elevation: 8,
         ),
       ),
-      home: const HomeScreen(),
+      home: HomeScreen(preferencesService: preferencesService),
     );
   }
 }

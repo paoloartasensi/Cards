@@ -4,13 +4,16 @@ import '../models/card_model.dart';
 import '../providers/cards_provider.dart';
 import '../widgets/wallet_card.dart';
 import '../widgets/swipeable_card_stack.dart';
+import '../services/preferences_service.dart';
 import 'card_detail_screen.dart';
 import 'add_card_screen.dart';
 import 'info_screen.dart';
 
 /// Home screen with wallet-style card stack
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  final PreferencesService preferencesService;
+  
+  const HomeScreen({super.key, required this.preferencesService});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -20,14 +23,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   String? _selectedCategory;
   int? _expandedIndex;
   bool _useSwipeMode = true; // Toggle between swipe and list mode
+  bool _autoOpenLastCard = false;
+  bool _hasCheckedLastCard = false;
 
   @override
   void initState() {
     super.initState();
+    _autoOpenLastCard = widget.preferencesService.isAutoOpenLastCardEnabled();
     // Load cards on startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(cardsProvider.notifier).loadCards();
+      _checkAndOpenLastCard();
     });
+  }
+  
+  Future<void> _checkAndOpenLastCard() async {
+    if (_hasCheckedLastCard) return;
+    _hasCheckedLastCard = true;
+    
+    if (!_autoOpenLastCard) return;
+    
+    final lastCardId = widget.preferencesService.getLastViewedCard();
+    if (lastCardId == null) return;
+    
+    // Wait a bit for cards to load
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    if (!mounted) return;
+    
+    final cards = ref.read(cardsProvider);
+    final lastCard = cards.where((c) => c.id == lastCardId).firstOrNull;
+    
+    if (lastCard != null) {
+      _openCardDetail(lastCard, saveAsLast: false);
+    }
   }
 
   void _toggleViewMode() {
@@ -47,7 +76,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     });
   }
 
-  void _openCardDetail(CardModel card) {
+  void _openCardDetail(CardModel card, {bool saveAsLast = true}) {
+    // Save as last viewed card
+    if (saveAsLast) {
+      widget.preferencesService.setLastViewedCard(card.id);
+    }
+    
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -175,6 +209,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                 },
               ),
               Divider(color: Colors.white.withValues(alpha: 0.1)),
+              StatefulBuilder(
+                builder: (context, setModalState) {
+                  return SwitchListTile(
+                    secondary: Icon(
+                      Icons.replay,
+                      color: _autoOpenLastCard ? Colors.blue : Colors.white,
+                    ),
+                    title: const Text(
+                      'Apri ultima tessera',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      'All\'avvio apre l\'ultima tessera visualizzata',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                    ),
+                    value: _autoOpenLastCard,
+                    activeTrackColor: Colors.blue.withValues(alpha: 0.5),
+                    thumbColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return Colors.blue;
+                      }
+                      return Colors.grey;
+                    }),
+                    onChanged: (value) {
+                      setModalState(() {
+                        _autoOpenLastCard = value;
+                      });
+                      setState(() {
+                        _autoOpenLastCard = value;
+                      });
+                      widget.preferencesService.setAutoOpenLastCard(value);
+                    },
+                  );
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.info_outline, color: Colors.white),
                 title: const Text('Informazioni', style: TextStyle(color: Colors.white)),
